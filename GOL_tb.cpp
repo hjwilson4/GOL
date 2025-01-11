@@ -173,27 +173,29 @@ void render_grid(const vector<vector<bool>>& game_state, sf::RenderWindow& windo
     // Clear the window with white color
     window.clear(sf::Color::White);
 
-    // Calculate the total size of the grid
-    int grid_width = game_state[0].size() * cell_size;
-    int grid_height = game_state.size() * cell_size;
-
-    // Calculate the position to center the grid
+    // Get window size
     int window_width = window.getSize().x;
     int window_height = window.getSize().y;
+
+    // Calculate the cell size dynamically to fit the window
+    int grid_columns = game_state[0].size();
+    int grid_rows = game_state.size();
+    int dynamic_cell_size = std::min(window_width / grid_columns, window_height / grid_rows);
+
+    // Calculate the total size of the grid
+    int grid_width = grid_columns * dynamic_cell_size;
+    int grid_height = grid_rows * dynamic_cell_size;
+
+    // Calculate the position to center the grid
     int offset_x = (window_width - grid_width) / 2;
     int offset_y = (window_height - grid_height) / 2;
 
     // Draw each cell of the grid
     for (int i = 0; i < game_state.size(); ++i) {
         for (int j = 0; j < game_state[0].size(); ++j) {
-            sf::RectangleShape cell(sf::Vector2f(cell_size, cell_size));
-            cell.setPosition(offset_x + j * cell_size, offset_y + i * cell_size);
-            if (game_state[i][j]) {
-                cell.setFillColor(sf::Color{0, 255, 75, 150}); // Alive cell light green
-
-            } else {
-                cell.setFillColor(sf::Color{200, 0, 0, 150}); // Dead cell light red
-            }
+            sf::RectangleShape cell(sf::Vector2f(dynamic_cell_size, dynamic_cell_size));
+            cell.setPosition(offset_x + j * dynamic_cell_size, offset_y + i * dynamic_cell_size);
+            cell.setFillColor(game_state[i][j] ? sf::Color{0, 255, 75, 150} : sf::Color{200, 0, 0, 150});
             cell.setOutlineColor(sf::Color::Black); // Cell outline color
             cell.setOutlineThickness(2); // Cell outline thickness
             window.draw(cell);
@@ -208,13 +210,13 @@ bool cycle_game_states(const vector<vector<vector<bool>>>& game_states) {
 
     // Create a next iteration button
     sf::RectangleShape iter_button(sf::Vector2f(200, 50));
-    iter_button.setFillColor(sf::Color{0, 150, 255});
+    iter_button.setFillColor(sf::Color{0, 150, 255}); // Light blue button
     // Center the button horizontally and place it near the bottom of the screen
     iter_button.setPosition((window.getSize().x - iter_button.getSize().x) / 2, window.getSize().y - iter_button.getSize().y - 20); 
 
     // Create a skip to new game button
     sf::RectangleShape next_button(sf::Vector2f(300, 50));
-    next_button.setFillColor(sf::Color{0, 150, 255});
+    next_button.setFillColor(sf::Color{0, 150, 255}); // Light blue button
     // Center the button horizontally and place it near the top of the screen
     next_button.setPosition((window.getSize().x - next_button.getSize().x) / 2, 20); 
 
@@ -285,6 +287,30 @@ bool cycle_game_states(const vector<vector<vector<bool>>>& game_states) {
                     return true;
                 }
             }
+
+            if (event.type == sf::Event::Resized) {
+                sf::FloatRect visibleArea(0, 0, event.size.width, event.size.height);
+                window.setView(sf::View(visibleArea));
+
+                // Update button positions and sizes
+                iter_button.setSize(sf::Vector2f(event.size.width * 0.25f, event.size.height * 0.06f));
+                iter_button.setPosition((event.size.width - iter_button.getSize().x) / 2, event.size.height - iter_button.getSize().y - 20);
+
+                next_button.setSize(sf::Vector2f(event.size.width * 0.375f, event.size.height * 0.06f));
+                next_button.setPosition((event.size.width - next_button.getSize().x) / 2, 20);
+
+                // Update text positions
+                iterbuttonText.setCharacterSize(iter_button.getSize().y * 0.5f);
+                sf::FloatRect iter_textBounds = iterbuttonText.getLocalBounds();
+                iterbuttonText.setOrigin(iter_textBounds.left + iter_textBounds.width / 2, iter_textBounds.top + iter_textBounds.height / 2);
+                iterbuttonText.setPosition(iter_button.getPosition().x + iter_button.getSize().x / 2, iter_button.getPosition().y + iter_button.getSize().y / 2);
+
+                nextbuttonText.setCharacterSize(next_button.getSize().y * 0.5f);
+                sf::FloatRect next_textBounds = nextbuttonText.getLocalBounds();
+                nextbuttonText.setOrigin(next_textBounds.left + next_textBounds.width / 2, next_textBounds.top + next_textBounds.height / 2);
+                nextbuttonText.setPosition(next_button.getPosition().x + next_button.getSize().x / 2, next_button.getPosition().y + next_button.getSize().y / 2);
+            }
+
         }
 
         window.clear();

@@ -20,7 +20,7 @@ all: compile run
 # Compile and build the executable
 compile:
 	@echo "Compiling RTL and C++ sources with Verilator..."
-	$(VERILATOR) $(VERILATOR_FLAGS) $(GOL_PARAMS) $(SV_SOURCES) --exe $(TESTBENCH) -LDFLAGS "$(SFML_FLAGS)" > /dev/null 2>&1
+	$(VERILATOR) $(VERILATOR_FLAGS) $(GOL_PARAMS) $(SV_SOURCES) --exe $(TESTBENCH) -LDFLAGS "$(SFML_FLAGS)" #> /dev/null 2>&1
 
 # Run the simulation
 run:
