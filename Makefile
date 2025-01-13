@@ -5,11 +5,11 @@ VERILATOR_FLAGS = --cc --trace --build -Wno-fatal -Wno-UNUSED -Wno-PINMISSING -W
 # Files
 TOP_MODULE = GOL
 SV_SOURCES = GOL.sv GOLCell.sv  # List of your SystemVerilog source files
-TESTBENCH = GOL_tb.cpp
+TESTBENCH = GOL_tb.cpp GOL_GUI.cpp
 OUTPUT_DIR = obj_dir
 
 # Parameters (customize as needed)
-GOL_PARAMS = -Gcolumns=10 -Grows=6
+GOL_PARAMS = -Gcolumns=30 -Grows=30
 
 # SFML Flags (you can also verify that SFML paths are correct)
 SFML_FLAGS = $(shell pkg-config --cflags --libs sfml-graphics sfml-window sfml-system)

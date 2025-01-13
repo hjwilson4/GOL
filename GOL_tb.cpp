@@ -4,16 +4,13 @@
 #include <iostream>
 #include <vector>
 #include <random>
+#include "GOL_GUI.h"
 #if VM_TRACE
 #include "verilated_vcd_c.h"
 #endif
-#include <SFML/Graphics.hpp>
-#include <SFML/Window.hpp>
-#include <SFML/System.hpp>
+
 
 using namespace std;
-
-#define NUM_TESTS 5    // Number of random test cases
 vluint64_t sim_time = 0; // sim time 
 
 
@@ -43,6 +40,65 @@ vector<vector<bool>> generate_stimulus(int n, int m) {
     }
 
     return stimulus;
+}
+
+// Function to initialize a p46 gun in the Game of Life
+vector<vector<bool>> p46_gun(int n, int m) {
+    vector<vector<bool>> gun(n, vector<bool>(m, false));
+
+    auto set_cell = [&](int row, int col) {
+        if (row >= 0 && row < n && col >= 0 && col < m) {
+            gun[row][col] = true;
+        }
+    };
+
+    // Gun pattern (This is the p46 gun configuration)
+    // Gun size: 46x13
+    set_cell(2, 1); set_cell(2, 2); set_cell(3, 1); set_cell(3, 2);
+    set_cell(9, 1); set_cell(9, 2); set_cell(10, 1); set_cell(10, 2);
+
+    set_cell(2, 15); set_cell(2, 16); set_cell(2, 19);
+    set_cell(3, 15); set_cell(3, 17); set_cell(3, 18);
+    set_cell(4, 16);
+    set_cell(5, 16); set_cell(5, 17); set_cell(5, 18);
+
+    set_cell(7, 16); set_cell(7, 17); set_cell(7, 18);
+    set_cell(8, 16);
+    set_cell(9, 15); set_cell(9, 17); set_cell(9, 18);
+    set_cell(10, 15); set_cell(10, 16); set_cell(10, 19);
+
+    set_cell(2, 24); set_cell(2, 25);
+    set_cell(3, 25); set_cell(3, 26);
+    set_cell(4, 23); set_cell(4, 25);
+    set_cell(5, 23); set_cell(5, 24);
+
+    set_cell(7, 23); set_cell(7, 24);
+    set_cell(8, 23); set_cell(8, 25);
+    set_cell(9, 25); set_cell(9, 26);
+    set_cell(10, 24); set_cell(10, 25);
+
+    set_cell(2, 28); set_cell(2, 29);
+    set_cell(3, 28); set_cell(3, 29);
+
+    set_cell(17, 32); set_cell(17, 33); set_cell(17, 34);
+    set_cell(18, 31); set_cell(18, 35);
+    set_cell(19, 30); set_cell(19, 34); set_cell(19, 35);
+    set_cell(20, 30); set_cell(20, 32); set_cell(20, 33);
+    set_cell(21, 32);
+
+    set_cell(17, 38); set_cell(17, 39); set_cell(17, 40);
+    set_cell(18, 37); set_cell(18, 41);
+    set_cell(19, 37); set_cell(19, 38); set_cell(19, 42);
+    set_cell(20, 39); set_cell(20, 40); set_cell(20, 42);
+    set_cell(21, 40);
+
+    set_cell(32, 32); set_cell(32, 33);
+    set_cell(33, 32); set_cell(33, 33);
+
+    set_cell(32, 39); set_cell(32, 40);
+    set_cell(33, 39); set_cell(33, 40);
+
+    return gun;
 }
 
 // Function to apply stimulus game state to the GOL DUT  
@@ -77,7 +133,8 @@ void print_grid(const char* label, vector<vector<bool>>& stimulus) {
     }
 }
 
-// Function to capture DUT output grid
+// Function to capture DUT output game state
+// DUT game state will be stored in the variable game_state
 void capture_game_state(VGOL* dut, vector<vector<bool>>& game_state, vluint64_t &sim_time, VerilatedVcdC* tfp) {
     // Send shift signal high to shift out gamestate
     dut->Shift = 1;
@@ -101,6 +158,8 @@ void capture_game_state(VGOL* dut, vector<vector<bool>>& game_state, vluint64_t 
 }
 
 
+// Function to manually calculate the next predicted game state. 
+// Used to verify correctness of DUT.
 vector<vector<bool>> calc_game_state(const vector<vector<bool>>& current_state) {
     int rows = current_state.size();
     int cols = current_state[0].size();
@@ -168,167 +227,12 @@ int score_game_state(vector<vector<bool>> expected_state, vector<vector<bool>> d
     }
 }
 
-// Function to render the game state grid using SFML
-void render_grid(const vector<vector<bool>>& game_state, sf::RenderWindow& window, int cell_size = 30) {
-    // Clear the window with white color
-    window.clear(sf::Color::White);
-
-    // Get window size
-    int window_width = window.getSize().x;
-    int window_height = window.getSize().y;
-
-    // Calculate the cell size dynamically to fit the window
-    int grid_columns = game_state[0].size();
-    int grid_rows = game_state.size();
-    int dynamic_cell_size = std::min(window_width / grid_columns, window_height / grid_rows);
-
-    // Calculate the total size of the grid
-    int grid_width = grid_columns * dynamic_cell_size;
-    int grid_height = grid_rows * dynamic_cell_size;
-
-    // Calculate the position to center the grid
-    int offset_x = (window_width - grid_width) / 2;
-    int offset_y = (window_height - grid_height) / 2;
-
-    // Draw each cell of the grid
-    for (int i = 0; i < game_state.size(); ++i) {
-        for (int j = 0; j < game_state[0].size(); ++j) {
-            sf::RectangleShape cell(sf::Vector2f(dynamic_cell_size, dynamic_cell_size));
-            cell.setPosition(offset_x + j * dynamic_cell_size, offset_y + i * dynamic_cell_size);
-            cell.setFillColor(game_state[i][j] ? sf::Color{0, 255, 75, 150} : sf::Color{200, 0, 0, 150});
-            cell.setOutlineColor(sf::Color::Black); // Cell outline color
-            cell.setOutlineThickness(2); // Cell outline thickness
-            window.draw(cell);
-        }
-    }
-}
-
-// Function to cycle through game states with a button press in the UI
-bool cycle_game_states(const vector<vector<vector<bool>>>& game_states) {
-    // Create a window
-    sf::RenderWindow window(sf::VideoMode(800, 800), "Game of Life", sf::Style::Close | sf::Style::Resize);
-
-    // Create a next iteration button
-    sf::RectangleShape iter_button(sf::Vector2f(200, 50));
-    iter_button.setFillColor(sf::Color{0, 150, 255}); // Light blue button
-    // Center the button horizontally and place it near the bottom of the screen
-    iter_button.setPosition((window.getSize().x - iter_button.getSize().x) / 2, window.getSize().y - iter_button.getSize().y - 20); 
-
-    // Create a skip to new game button
-    sf::RectangleShape next_button(sf::Vector2f(300, 50));
-    next_button.setFillColor(sf::Color{0, 150, 255}); // Light blue button
-    // Center the button horizontally and place it near the top of the screen
-    next_button.setPosition((window.getSize().x - next_button.getSize().x) / 2, 20); 
-
-
-    // Load the font
-    sf::Font font;
-    if (!font.loadFromFile("Anton.ttf")) {
-        std::cerr << "Error loading font!" << std::endl;
-        return false; // Exit if font is not found
-    }
-
-    // Create text for the iteration button and set the font
-    sf::Text iterbuttonText;
-    iterbuttonText.setString("Calc Next Iteration");
-    iterbuttonText.setFont(font);
-    iterbuttonText.setCharacterSize(20);
-    iterbuttonText.setFillColor(sf::Color::Black);
-
-    // Create text for the skip test button and set the font
-    sf::Text nextbuttonText;
-    nextbuttonText.setString("Click for New Game");
-    nextbuttonText.setFont(font);
-    nextbuttonText.setCharacterSize(30);
-    nextbuttonText.setFillColor(sf::Color::Black);
-
-    // Set the origin of the text to its center for proper centering
-    sf::FloatRect iter_textBounds = iterbuttonText.getLocalBounds();
-    iterbuttonText.setOrigin(iter_textBounds.left + iter_textBounds.width / 2.0f, iter_textBounds.top + iter_textBounds.height / 2.0f);
-
-    // Center the text in the button
-    iterbuttonText.setPosition(
-        iter_button.getPosition().x + iter_button.getSize().x / 2.0f, 
-        iter_button.getPosition().y + iter_button.getSize().y / 2.0f
-    );
-
-    // Set the origin of the text to its center for proper centering
-    sf::FloatRect next_textBounds = nextbuttonText.getLocalBounds();
-    nextbuttonText.setOrigin(next_textBounds.left + next_textBounds.width / 2.0f, next_textBounds.top + next_textBounds.height / 2.0f);
-
-    // Center the text in the button
-    nextbuttonText.setPosition(
-        next_button.getPosition().x + next_button.getSize().x / 2.0f, 
-        next_button.getPosition().y + next_button.getSize().y / 2.0f
-    );
-
-    int current_state_index = 0;
-
-    // Main UI loop
-    while (window.isOpen()) {
-        sf::Event event;
-
-        while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed) {
-                window.close();
-                return false;
-            }
-
-            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
-                if (iter_button.getGlobalBounds().contains(event.mouseButton.x, event.mouseButton.y)) {
-                    current_state_index++;
-                    if (current_state_index >= game_states.size()) {
-                        current_state_index = 0; // Loop back to the first state
-                    }
-                }
-
-                else if (next_button.getGlobalBounds().contains(event.mouseButton.x, event.mouseButton.y)) {
-                    window.close();
-                    return true;
-                }
-            }
-
-            if (event.type == sf::Event::Resized) {
-                sf::FloatRect visibleArea(0, 0, event.size.width, event.size.height);
-                window.setView(sf::View(visibleArea));
-
-                // Update button positions and sizes
-                iter_button.setSize(sf::Vector2f(event.size.width * 0.25f, event.size.height * 0.06f));
-                iter_button.setPosition((event.size.width - iter_button.getSize().x) / 2, event.size.height - iter_button.getSize().y - 20);
-
-                next_button.setSize(sf::Vector2f(event.size.width * 0.375f, event.size.height * 0.06f));
-                next_button.setPosition((event.size.width - next_button.getSize().x) / 2, 20);
-
-                // Update text positions
-                iterbuttonText.setCharacterSize(iter_button.getSize().y * 0.5f);
-                sf::FloatRect iter_textBounds = iterbuttonText.getLocalBounds();
-                iterbuttonText.setOrigin(iter_textBounds.left + iter_textBounds.width / 2, iter_textBounds.top + iter_textBounds.height / 2);
-                iterbuttonText.setPosition(iter_button.getPosition().x + iter_button.getSize().x / 2, iter_button.getPosition().y + iter_button.getSize().y / 2);
-
-                nextbuttonText.setCharacterSize(next_button.getSize().y * 0.5f);
-                sf::FloatRect next_textBounds = nextbuttonText.getLocalBounds();
-                nextbuttonText.setOrigin(next_textBounds.left + next_textBounds.width / 2, next_textBounds.top + next_textBounds.height / 2);
-                nextbuttonText.setPosition(next_button.getPosition().x + next_button.getSize().x / 2, next_button.getPosition().y + next_button.getSize().y / 2);
-            }
-
-        }
-
-        window.clear();
-        render_grid(game_states[current_state_index], window); // Render the current game state
-        window.draw(iter_button);
-        window.draw(iterbuttonText);
-        window.draw(next_button);
-        window.draw(nextbuttonText);
-        window.display();
-    }
-}
-
 int main(int argc, char** argv) {
     Verilated::commandArgs(argc, argv);
     VGOL* dut = new VGOL;
     // Parse arguments passed with `-G` flags
-    int rows = 6; // Default value
-    int columns = 10; // Default value
+    int rows = 30; // Default value
+    int columns = 30; // Default value
 
 
     VerilatedVcdC* tfp = new VerilatedVcdC;
@@ -349,21 +253,24 @@ int main(int argc, char** argv) {
 
     // Run tests
     int t = 0;
-    bool run = true;
+    int run = 1;
     while (run) {
         t++;
-        // Generate random initial grid state
-        vector<vector<bool>> game_state = generate_stimulus(rows, columns);
+        // Generate random initial grid state if run=1, if run=2 do special
+        vector<vector<bool>> game_state;
+        if (run==1) game_state = generate_stimulus(rows, columns);
+        else if (run==2) game_state = p46_gun(rows, columns);
+       
 
-        // Apply random grid to DUT
+        // Apply random grid to DUT 
         apply_stimulus(dut, game_state, sim_time, tfp);
 
         // Buffer to store each iteration's game state
         vector<vector<vector<bool>>> game_states;
 
-        // Let each stimulus run for 50 cycles unless it converges early
+        // Let each stimulus run for 200 cycles unless it converges early
         // each cycle check game state and make sure it is correct
-        for (int c = 0; c < 50; ++c) {
+        for (int c = 0; c < 200; ++c) {
             // Toggle NextTimeTick for one clock cycle
             dut->NextTimeTick = 1;
             dut->clock = 1;
